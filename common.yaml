@@ -1,0 +1,53 @@
+esphome:
+  name: ${node_name}
+
+esp32:
+  board: esp32vn-iot-uno
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption: 
+    key: !secret encryption_key
+
+ota:
+  password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  fast_connect: true
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: !secret ap_ssid
+    password: !secret ap_password
+  domain: ".iot"
+  on_connect:
+    - script.execute: main_script
+
+number:
+  - platform: template
+    name: ${visible_name} Sleep Duration
+    unit_of_measurement: s
+    max_value: 86400
+    min_value: 0
+    step: 1
+    optimistic: true
+    id: ${node_name}_sleep_sec
+    restore_value: true
+
+script:
+  - id: controlled_sleep
+    then:
+      - deep_sleep.enter: 
+          id: deep_sleep_1
+          sleep_duration: !lambda 'return id(${node_name}_sleep_sec).state * 1000;'
+      
+deep_sleep:
+  id: deep_sleep_1
+  sleep_duration: 1min
