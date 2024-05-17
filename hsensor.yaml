@@ -8,7 +8,6 @@ esp32:
 
 substitutions:
   probes_count: "1"
-
      
 # Enable logging
 logger:
@@ -69,6 +68,17 @@ sensor:
     - lambda: if (x < 1) return 0; else return (x);
     accuracy_decimals: 1
 
+number:
+  - platform: template
+    name: Sleep Duration
+    unit_of_measurement: s
+    max_value: 86400
+    min_value: 0
+    step: 1
+    optimistic: true
+    id: sleep_sec
+    restore_value: true
+
 
 output:
   - platform: gpio
@@ -102,7 +112,7 @@ script:
             - component.update: soilsensor
             - component.update: batterysensor
       - output.turn_off: power_sensors
-      - delay: 5000ms
+      - delay: 3s
       
   - id: read_all_and_sleep
     then:
@@ -111,10 +121,14 @@ script:
       - logger.log:
           format: "Published battery sensor value %.1f, raw value %.3f and soil sensor %.1f, raw value %.3f"
           args: [ 'id(batterysensor).state', 'id(batterysensor).raw_state', 'id(soilsensor).state', 'id(soilsensor).raw_state' ]
-      - delay: 30s
+      - delay: 10s
+      - script.execute: controlled_sleep
+          
+  - id: controlled_sleep
+    then:
       - deep_sleep.enter: 
           id: deep_sleep_1
-          sleep_duration: 30s
+          sleep_duration: !lambda 'return id(sleep_sec).state * 1000;'
       
 deep_sleep:
   id: deep_sleep_1
