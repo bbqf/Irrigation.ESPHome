@@ -1,0 +1,121 @@
+esphome:
+  name: hsensor
+
+esp32:
+  board: esp32vn-iot-uno
+  framework:
+    type: arduino
+
+substitutions:
+  probes_count: "1"
+
+     
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption: 
+    key: !secret encryption_key
+
+ota:
+  password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  fast_connect: true
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: !secret ap_ssid
+    password: !secret ap_password
+  domain: ".iot"
+  on_connect:
+    - script.execute: read_all_and_sleep
+
+sensor:
+  - platform: adc
+    id: soilsensor
+    pin: 33
+    name: "Soil Moisture"
+    device_class: "humidity"
+    update_interval: never
+    unit_of_measurement: "%"
+    attenuation: 12db
+#    samples: ${probes_count} // Multisampling not yet in release as of 16.05.24, hence need median block below
+    filters:
+    # - median:
+        # window_size: ${probes_count}
+        # send_every: ${probes_count}-1
+        # send_first_at: ${probes_count}-1
+    - calibrate_linear:
+        - 0.85 -> 0.00
+        - 0.44 -> 100.00
+    - lambda: if (x < 1) return 0; else return (x);
+    accuracy_decimals: 1
+  
+  - platform: adc
+    id: batterysensor
+    pin: 34
+    name: "Battery"
+    device_class: "voltage"
+    update_interval: never
+    filters:
+    # - median:
+        # window_size: ${probes_count}
+        # send_every: ${probes_count}-1
+        # send_first_at: ${probes_count}-1
+    - lambda: if (x < 1) return 0; else return (x);
+    accuracy_decimals: 1
+
+
+output:
+  - platform: gpio
+    pin: GPIO32
+    id: power_sensors
+switch:
+  - platform: output
+    id: read_sensors
+    name: "Read sensors"
+    output: power_sensors
+    on_turn_on:
+      - script.execute: read_all_and_sleep
+
+
+    
+#interval:
+#  - interval: 120s
+#    then:
+#      - script.execute: read_sensors_script
+
+
+script:
+  - id: read_sensors_script
+    then:
+      - output.turn_on: power_sensors
+      - delay: 500ms
+      - logger.log: "Reading ${probes_count} values"
+      - repeat:
+          count: ${probes_count}
+          then:
+            - component.update: soilsensor
+            - component.update: batterysensor
+      - output.turn_off: power_sensors
+      - delay: 5000ms
+      
+  - id: read_all_and_sleep
+    then:
+      - script.execute: read_sensors_script
+      - script.wait: read_sensors_script
+      - logger.log:
+          format: "Published battery sensor value %.1f, raw value %.3f and soil sensor %.1f, raw value %.3f"
+          args: [ 'id(batterysensor).state', 'id(batterysensor).raw_state', 'id(soilsensor).state', 'id(soilsensor).raw_state' ]
+      - delay: 30s
+      - deep_sleep.enter: 
+          id: deep_sleep_1
+          sleep_duration: 30s
+      
+deep_sleep:
+  id: deep_sleep_1
+  sleep_duration: 1min
