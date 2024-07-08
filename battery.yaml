@@ -5,7 +5,12 @@ sensor:
     name: Battery ${visible_name}
     device_class: "voltage"
     update_interval: never
+    attenuation: 12db
+    samples: ${probes_count}
+#    raw: true
     filters:
+#    - multiply: 0.00095238
+    - multiply: 2.0  # The voltage divider requires us to multiply by 2
     # - median:
         # window_size: ${probes_count}
         # send_every: ${probes_count}-1

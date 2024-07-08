@@ -7,6 +7,7 @@ esp32:
   framework:
     type: arduino
 
+
 # Enable logging
 logger:
 
@@ -16,8 +17,24 @@ api:
     key: !secret encryption_key
 
 ota:
+  id: my_ota
+  platform: esphome
   password: !secret ota_password
 
+#ota:
+#  platform: http_request
+
+#update:
+#  - platform: http_request
+#    name: Firmware Update
+#    source: https://filer.dh.home/esphome/update/${node_name}/manifest.json
+  
+  
+http_request:
+  useragent: esphome/device
+  verify_ssl: false
+  timeout: 10s
+  
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
@@ -39,16 +56,35 @@ number:
     min_value: 0
     step: 1
     optimistic: true
+#    set_action: !lambda 'id(my_select).publish_state(x);'
     id: ${node_name}_sleep_sec
     restore_value: true
+
+binary_sensor:
+  - platform: homeassistant
+    id: prevent_deep_sleep
+    entity_id: input_boolean.waitforupdate
 
 script:
   - id: controlled_sleep
     then:
-      - deep_sleep.enter: 
-          id: deep_sleep_1
-          sleep_duration: !lambda 'return id(${node_name}_sleep_sec).state * 1000;'
+      - wait_until:
+          condition:
+            api.connected
+      - logger.log: 
+          format: "WaitForUpdate is %s"
+          args: [ 'id(prevent_deep_sleep).state']
+      - if:
+          condition:
+            binary_sensor.is_on: prevent_deep_sleep
+          then:
+           - logger.log: 'Skipping sleep, per prevent_deep_sleep'
+          else:
+           - deep_sleep.enter: 
+               id: deep_sleep_1
+               sleep_duration: !lambda 'return id(${node_name}_sleep_sec).state * 1000;'
       
 deep_sleep:
   id: deep_sleep_1
-  sleep_duration: 1min
+  sleep_duration: 10s
+  
