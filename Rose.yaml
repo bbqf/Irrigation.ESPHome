@@ -1,0 +1,77 @@
+substitutions:
+  node_name: rose
+  visible_name: Rose
+  battery_pin: "34"
+  power_sensors_pin: "32"
+  probes_count: "10"
+
+packages:
+  device_base: !include common.yaml
+# used scripts: 
+#   controlled_sleep
+  battery: !include battery.yaml
+# used scripts:
+#   battery_update
+
+
+script: 
+  - id: main_script # required, as it will be called on boot
+    then:
+      - script.execute: read_all_and_sleep
+      
+  - id: read_sensors_script
+    then:
+      - wait_until:
+          condition:
+            api.connected
+      - output.turn_on: power_sensors
+      - logger.log:
+          format: "Powering up sensors"
+      - delay: 1000ms
+      - component.update: soilsensor
+      - script.execute: battery_update
+      - script.wait: battery_update
+      - delay: 1000ms
+      - logger.log:
+          format: "Powering sensors down"
+      - output.turn_off: power_sensors
+      - logger.log:
+          format: "Updated soil sensor %.1f, raw value %.3f"
+          args: [ 'id(soilsensor).state', 'id(soilsensor).raw_state' ]
+      - delay: 3s
+      
+  - id: read_all_and_sleep
+    then:
+      - script.execute: read_sensors_script
+      - script.wait: read_sensors_script
+      - delay: 5s
+      - script.execute: controlled_sleep
+
+
+sensor:
+  - platform: adc
+    id: soilsensor
+    pin: 33
+    name: "Soil Moisture"
+    device_class: "humidity"
+    update_interval: never
+    unit_of_measurement: "%"
+    attenuation: 12db
+    samples: ${probes_count}
+    filters:
+    # - median:
+        # window_size: ${probes_count}
+        # send_every: ${probes_count}-1
+        # send_first_at: ${probes_count}-1
+    - calibrate_linear:
+        - 1.8 -> 0.00
+        - 0.6 -> 100.00
+    - lambda: if (x < 1) return 0; else if (x>100) return 100; else return (x);
+    accuracy_decimals: 1
+    
+output:
+  - platform: gpio
+    pin: ${power_sensors_pin}
+    id: power_sensors
+
+
