@@ -73,7 +73,7 @@ script:
             api.connected
       - logger.log: 
           format: "WaitForUpdate is %s"
-          args: [ 'id(prevent_deep_sleep).state']
+          args: [ 'id(prevent_deep_sleep).state ? "ON" : "OFF"']
       - if:
           condition:
             binary_sensor.is_on: prevent_deep_sleep

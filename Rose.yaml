@@ -17,7 +17,12 @@ packages:
 script: 
   - id: main_script # required, as it will be called on boot
     then:
-      - script.execute: read_all_and_sleep
+        while:
+            condition: 
+                lambda: return true;
+            then:
+                - script.execute: read_all_and_sleep
+                - script.wait: read_all_and_sleep
       
   - id: read_sensors_script
     then:
