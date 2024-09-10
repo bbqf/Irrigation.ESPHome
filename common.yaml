@@ -3,6 +3,7 @@ esphome:
   friendly_name: ${visible_name}
 
 esp32:
+#  board: lolin_s2_mini
   board: esp32vn-iot-uno
   framework:
     type: arduino
@@ -56,7 +57,6 @@ number:
     min_value: 0
     step: 1
     optimistic: true
-#    set_action: !lambda 'id(my_select).publish_state(x);'
     id: ${node_name}_sleep_sec
     restore_value: true
 
@@ -64,6 +64,8 @@ binary_sensor:
   - platform: homeassistant
     id: prevent_deep_sleep
     entity_id: input_boolean.waitforupdate
+  - platform: status
+    name: "device_name Status"
 
 script:
   - id: controlled_sleep

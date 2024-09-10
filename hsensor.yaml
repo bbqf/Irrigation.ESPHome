@@ -1,8 +1,9 @@
 substitutions:
   node_name: hsensor
   visible_name: HSensor
-  battery_pin: "34"
-  power_sensors_pin: "32"
+  battery_pin: "33"
+  power_sensors_pin: "15"
+  sensor_pin: "32"
   probes_count: "10"
 
 packages:
@@ -17,7 +18,12 @@ packages:
 script: 
   - id: main_script # required, as it will be called on boot
     then:
-      - script.execute: read_all_and_sleep
+        while:
+            condition: 
+                lambda: return true;
+            then:
+                - script.execute: read_all_and_sleep
+                - script.wait: read_all_and_sleep
       
   - id: read_sensors_script
     then:
@@ -27,11 +33,9 @@ script:
       - output.turn_on: power_sensors
       - logger.log:
           format: "Powering up sensors"
-      - delay: 1000ms
+      - delay: 1s
       - component.update: soilsensor
-      - script.execute: battery_update
-      - script.wait: battery_update
-      - delay: 1000ms
+      - delay: 1s
       - logger.log:
           format: "Powering sensors down"
       - output.turn_off: power_sensors
@@ -44,20 +48,22 @@ script:
     then:
       - script.execute: read_sensors_script
       - script.wait: read_sensors_script
-#      - delay: 10s
+      - script.execute: battery_update
+      - script.wait: battery_update
+      - delay: 15s
       - script.execute: controlled_sleep
 
 
 sensor:
   - platform: adc
     id: soilsensor
-    pin: 33
+    pin: ${sensor_pin}
     name: "Soil Moisture"
     device_class: "humidity"
     update_interval: never
     unit_of_measurement: "%"
     attenuation: 12db
-    samples: ${probes_count} 
+    samples: ${probes_count}
     filters:
     # - median:
         # window_size: ${probes_count}

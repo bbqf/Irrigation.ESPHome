@@ -3,6 +3,7 @@ substitutions:
   visible_name: Rose
   battery_pin: "34"
   power_sensors_pin: "32"
+  sensor_pin: "33"
   probes_count: "10"
 
 packages:
@@ -32,11 +33,9 @@ script:
       - output.turn_on: power_sensors
       - logger.log:
           format: "Powering up sensors"
-      - delay: 1000ms
+      - delay: 1s
       - component.update: soilsensor
-      - script.execute: battery_update
-      - script.wait: battery_update
-      - delay: 1000ms
+      - delay: 1s
       - logger.log:
           format: "Powering sensors down"
       - output.turn_off: power_sensors
@@ -49,14 +48,16 @@ script:
     then:
       - script.execute: read_sensors_script
       - script.wait: read_sensors_script
-      - delay: 5s
+      - script.execute: battery_update
+      - script.wait: battery_update
+      - delay: 15s
       - script.execute: controlled_sleep
 
 
 sensor:
   - platform: adc
     id: soilsensor
-    pin: 33
+    pin: ${sensor_pin}
     name: "Soil Moisture"
     device_class: "humidity"
     update_interval: never

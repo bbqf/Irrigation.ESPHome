@@ -21,6 +21,9 @@ sensor:
 script:
   - id: battery_update
     then:
+      - wait_until:
+          condition:
+              api.connected
       - component.update: ${node_name}_batterysensor
       - logger.log:
           format: "Updated battery sensor value %.1f, raw value %.3f"
