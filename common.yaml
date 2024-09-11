@@ -65,7 +65,7 @@ binary_sensor:
     id: prevent_deep_sleep
     entity_id: input_boolean.waitforupdate
   - platform: status
-    name: "device_name Status"
+    name: "${node_name} Status"
 
 script:
   - id: controlled_sleep
