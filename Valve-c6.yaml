@@ -1,0 +1,77 @@
+## Based on Irrigation-C6 schematics ##
+
+substitutions:
+  node_name: wvalve2 
+  visible_name: Water Valve
+  battery_pin: "3"
+  ctl_out_pin: "11"
+  probes_count: "10"
+
+packages:
+  device_base: !include common-c6.yaml
+# used scripts: 
+#   controlled_sleep
+  battery: !include battery.yaml
+# used scripts:
+#   battery_update
+# used substitutions
+#   probes_count
+
+
+script: 
+  - id: main_script # required, as it will be called on boot
+    then:
+        while:
+            condition: 
+                lambda: return true;
+            then:
+                - script.execute: read_all_and_sleep
+                - script.wait: read_all_and_sleep
+      
+  - id: control_valve
+    then:
+      - wait_until:
+          condition:
+            api.connected
+      - logger.log: 
+          format: "Water Valve is %s"
+          args: [ 'id(${node_name}_valve_open).state ? "ON" : "OFF"']
+      - if:
+          condition:
+            binary_sensor.is_on: ${node_name}_valve_open
+          then:
+            - output.turn_on: valve
+            - logger.log:
+                format: "Valve is open"
+          else:
+            - output.turn_off: valve
+            - logger.log:
+                format: "Valve is closed"
+  - id: read_all_and_sleep
+    then:
+      - script.execute: control_valve
+      - script.wait: control_valve
+      - script.execute: battery_update
+      - script.wait: battery_update
+      - delay: 5s
+      - if:
+          condition:
+            binary_sensor.is_on: ${node_name}_valve_open
+          then:
+            - logger.log: 'Skipping sleep, valve is open'
+            - delay: 1s            
+          else:
+            - script.execute: controlled_sleep
+
+binary_sensor:
+  - platform: homeassistant
+    id: ${node_name}_valve_open
+    entity_id: input_boolean.${node_name}_valve_open
+
+    
+output:
+  - platform: gpio
+    pin: ${ctl_out_pin}
+    id: valve
+
+

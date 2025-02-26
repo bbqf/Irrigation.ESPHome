@@ -46,10 +46,10 @@ script:
       
   - id: read_all_and_sleep
     then:
-      - script.execute: read_sensors_script
-      - script.wait: read_sensors_script
       - script.execute: battery_update
       - script.wait: battery_update
+      - script.execute: read_sensors_script
+      - script.wait: read_sensors_script
       - delay: 15s
       - script.execute: controlled_sleep
 
@@ -72,6 +72,7 @@ sensor:
     - calibrate_linear:
         - 1.8 -> 0.00
         - 0.6 -> 100.00
+    - lambda: if (id(${node_name}_batterysensor).state < 3.5) return ( x - 100*(3.5-id(${node_name}_batterysensor).state) ); else return(x);
     - lambda: if (x < 1) return 0; else if (x>100) return 100; else return (x);
     accuracy_decimals: 1
     
